@@ -49,17 +49,31 @@ struct TeleopControlView: View {
                     .disabled(viewModel.teleopStopButtonDisabled)
                 }
                 Divider()
-                Button {
-                    viewModel.teleopResetButtonPressed()
-                } label: {
-                    HStack {
-                        Image(systemName: viewModel.teleopResetButtonImage)
-                        Text(viewModel.teleopResetButtonText)
+                HStack {
+                    Button {
+                        viewModel.teleopResetButtonPressed()
+                    } label: {
+                        HStack {
+                            Image(systemName: viewModel.teleopResetButtonImage)
+                            Text(viewModel.teleopResetButtonText)
+                        }
+                        .frame(width: viewModel.teleopButtonWidth)
                     }
-                    .frame(width: viewModel.teleopButtonWidth)
+                    .font(.title3)
+                    .buttonStyle(.bordered)
+
+                    Button {
+                        viewModel.teleopAlignButtonPressed()
+                    } label: {
+                        HStack {
+                            Image(systemName: viewModel.teleopAlignButtonImage)
+                            Text(viewModel.teleopAlignButtonText)
+                        }
+                        .frame(width: viewModel.teleopButtonWidth)
+                    }
+                    .font(.title3)
+                    .buttonStyle(.bordered)
                 }
-                .font(.title3)
-                .buttonStyle(.bordered)
             }
             .frame(height: 100, alignment: .top)
         }
@@ -76,6 +90,10 @@ extension TeleopControlView {
         private let startTeleopCommand = "start teleop"
         private let stopTeleopCommand = "stop teleop"
         private let resetTeleopCommand = "reset teleop"
+        // "align" is dispatched by the TACO teleop script's TeleopCommandBridge;
+        // it must not contain the start/stop/reset substrings the stock
+        // OpenXRDevice handler matches on.
+        private let alignTeleopCommand = "align scene"
 
         var teleopRunning: Bool {
             get { appModel.teleopRunning }
@@ -116,6 +134,10 @@ extension TeleopControlView {
             sendTeleopCommandToServer(command: resetTeleopCommand)
         }
 
+        func teleopAlignButtonPressed() {
+            sendTeleopCommandToServer(command: alignTeleopCommand)
+        }
+
         var teleopStartButtonText: String {
             "Play"
         }
@@ -138,6 +160,14 @@ extension TeleopControlView {
 
         var teleopResetButtonText: String {
             "Reset"
+        }
+
+        var teleopAlignButtonImage: String {
+            "scope"
+        }
+
+        var teleopAlignButtonText: String {
+            "Align"
         }
 
         var teleopStopButtonText: String {

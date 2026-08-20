@@ -40,7 +40,50 @@ struct TopConfigView: View {
                 .onChange(of: scenePhase) {
                     viewModel.scenePhaseChanged(to: scenePhase)
                 }
+                .sheet(isPresented: Binding(
+                    get: { viewModel.appModel.recordResultEpisode != nil },
+                    set: { if !$0 { viewModel.appModel.recordResultEpisode = nil } }
+                )) {
+                    recordResultSheet
+                }
         }
+    }
+
+    /// Server-initiated prompt after the stop-recording hand gesture: mark the
+    /// just-finished episode as a success or a failure. Labels are single words
+    /// so visionOS Voice Control can press them by name.
+    private var recordResultSheet: some View {
+        VStack(spacing: 24) {
+            Text("Recording finished")
+                .font(.extraLargeTitle2)
+            if let episode = viewModel.appModel.recordResultEpisode, episode >= 0 {
+                Text("Episode \(episode) — keep it as a success or a failure?")
+                    .font(.title3)
+            }
+            HStack(spacing: 24) {
+                Button {
+                    viewModel.appModel.sendTeleopCommand("record_success")
+                    viewModel.appModel.recordResultEpisode = nil
+                } label: {
+                    Label("Success", systemImage: "checkmark.circle")
+                        .frame(width: 190)
+                }
+                .font(.title3)
+                .buttonStyle(.borderedProminent)
+
+                Button {
+                    viewModel.appModel.sendTeleopCommand("record_failure")
+                    viewModel.appModel.recordResultEpisode = nil
+                } label: {
+                    Label("Failure", systemImage: "xmark.circle")
+                        .frame(width: 190)
+                }
+                .font(.title3)
+                .buttonStyle(.bordered)
+            }
+        }
+        .padding(32)
+        .interactiveDismissDisabled()
     }
 
     private var mainPage: some View {

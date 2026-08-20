@@ -118,10 +118,12 @@ extension StreamingControlsView {
         ) {
             Task { @MainActor in
                 if newValue == .connected {
+                    appModel.startMessageReceiveTask()
                     if !appModel.immersiveSpaceIsOpen {
                         await appModel.openImmersiveSpace(id: streamingSpaceTitle)
                     }
                 } else {
+                    appModel.stopMessageReceiveTask()
                     if appModel.immersiveSpaceIsOpen {
                         await appModel.dismissImmersiveSpace()
                     }

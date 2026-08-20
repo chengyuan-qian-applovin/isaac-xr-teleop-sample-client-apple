@@ -13,9 +13,15 @@ import Foundation
 import CloudXRKit
 import SwiftUI
 import ARKit
+import os.log
 
 @Observable
 class AppModel {
+    @ObservationIgnored static let logger = Logger(
+        subsystem: Bundle.main.bundleIdentifier ?? "IsaacXRTeleopClient",
+        category: "AppModel"
+    )
+
     var openImmersiveSpace: OpenImmersiveSpaceAction!
     var dismissImmersiveSpace: DismissImmersiveSpaceAction!
     var openWindow: OpenWindowAction!
@@ -51,10 +57,72 @@ class AppModel {
 
     var teleopRunning: Bool = false
 
+    /// Episode index of a pending server-side "was this recording a success?" request.
+    /// Non-nil while the Success/Failure sheet should be shown.
+    var recordResultEpisode: Int?
+
+    /// Consumes the session's server message stream for server-initiated messages.
+    @ObservationIgnored private var messageReceiveTask: Task<Void, Never>?
+
     var ipAddress = savedSettings.ipAddress {
         didSet {
             Self.savedSettings.ipAddress = ipAddress
         }
+    }
+
+    // MARK: - Server-initiated messages
+
+    /// Listen for server->client messages. The Isaac Lab side pushes
+    /// `omni.kit.cloudxr.send_message` carb events whose `message` field arrives
+    /// here as the raw message bytes. Started on connect, stopped on disconnect.
+    func startMessageReceiveTask() {
+        messageReceiveTask?.cancel()
+        messageReceiveTask = Task { [weak self] in
+            guard let stream = self?.cxrSession.serverMessageStream else { return }
+            for await data in stream {
+                guard !Task.isCancelled else { return }
+                self?.handleServerMessage(data)
+            }
+        }
+    }
+
+    func stopMessageReceiveTask() {
+        messageReceiveTask?.cancel()
+        messageReceiveTask = nil
+        recordResultEpisode = nil
+        teleopRunning = false
+    }
+
+    private func handleServerMessage(_ data: Data) {
+        guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            Self.logger.warning("Server message is not JSON: \(String(data: data, encoding: .utf8) ?? "<binary>")")
+            return
+        }
+        // The relay may deliver either our payload directly or a wrapper with the
+        // payload under "message"; accept both.
+        let body = (json["message"] as? [String: Any]) ?? json
+        guard let type = (body["type"] as? String) ?? (json["type"] as? String) else { return }
+        switch type {
+        case "recording_result_request":
+            let episode = (body["episode"] as? Int) ?? -1
+            Task { @MainActor in
+                self.recordResultEpisode = episode
+            }
+        default:
+            Self.logger.info("Unhandled server message type: \(type)")
+        }
+    }
+
+    /// Send a teleop command (fire-and-forget) — usable from any view, including
+    /// the Success/Failure sheet.
+    func sendTeleopCommand(_ command: String) {
+        let teleopCommand = ClientToServerCommand(type: "teleop_command", message: ["command": command])
+        guard let jsonCommand = try? JSONEncoder().encode(teleopCommand) else {
+            Self.logger.error("JSON encoding failed.")
+            return
+        }
+        cxrSession.sendServerMessage(jsonCommand)
+        Self.logger.info("Teleop command sent: \(command)")
     }
 
     func appScenePhaseChanged(to scenePhase: ScenePhase) {
