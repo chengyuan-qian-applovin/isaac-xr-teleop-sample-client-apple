@@ -175,6 +175,17 @@ class AppModel {
         }
     }
 
+    /// After the Success/Failure choice: mirror the operator pressing Stop then
+    /// Reset, so the scene resets for the next episode and the client UI state
+    /// (teleopRunning) matches the server, which already paused at the gesture.
+    /// The server exports the episode before handling the reset, so this
+    /// back-to-back burst is safe.
+    func finishEpisodeCleanup() {
+        teleopRunning = false
+        sendTeleopCommand("stop teleop")
+        sendTeleopCommand("reset teleop")
+    }
+
     /// Send a teleop command (fire-and-forget) — usable from any view, unlike the
     /// deferred-send path in TeleopControlView's ViewModel, which is only mounted
     /// while connected.

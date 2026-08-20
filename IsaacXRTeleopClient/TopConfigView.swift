@@ -64,6 +64,7 @@ struct TopConfigView: View {
                 Button {
                     viewModel.appModel.sendTeleopCommand("record_success")
                     viewModel.appModel.recordResultEpisode = nil
+                    viewModel.appModel.finishEpisodeCleanup()
                 } label: {
                     Label("Success", systemImage: "checkmark.circle")
                         .frame(width: 190)
@@ -74,6 +75,7 @@ struct TopConfigView: View {
                 Button {
                     viewModel.appModel.sendTeleopCommand("record_failure")
                     viewModel.appModel.recordResultEpisode = nil
+                    viewModel.appModel.finishEpisodeCleanup()
                 } label: {
                     Label("Failure", systemImage: "xmark.circle")
                         .frame(width: 190)
