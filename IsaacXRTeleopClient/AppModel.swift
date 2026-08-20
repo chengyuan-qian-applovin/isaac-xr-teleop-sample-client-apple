@@ -41,6 +41,13 @@ class AppModel {
     /// In-flight channel discovery task so we don't spawn duplicates.
     @ObservationIgnored private var channelDiscoveryTask: Task<Void, Never>?
 
+    /// Episode index of a pending server-side "was this recording a success?" request.
+    /// Non-nil while the Success/Failure sheet should be shown.
+    var recordResultEpisode: Int?
+
+    /// Consumes teleopChannel.receivedMessageStream for server-initiated messages.
+    @ObservationIgnored private var messageReceiveTask: Task<Void, Never>?
+
     var configWindowIsOpen: Bool = false {
         didSet {
             // Reopen the window if the stream is running.
@@ -96,6 +103,7 @@ class AppModel {
 
                     teleopChannel = channel
                     Self.logger.info("Teleop message channel opened")
+                    startMessageReceiveTask(on: channel)
                     return channel
                 }
             }
@@ -125,8 +133,69 @@ class AppModel {
     func resetChannelState() {
         channelDiscoveryTask?.cancel()
         channelDiscoveryTask = nil
+        messageReceiveTask?.cancel()
+        messageReceiveTask = nil
         teleopChannel = nil
         teleopRunning = false
+        recordResultEpisode = nil
+    }
+
+    // MARK: - Server-initiated messages
+
+    /// Listen for server->client messages on the teleop channel. The Isaac Lab side
+    /// pushes `omni.kit.cloudxr.send_message` carb events whose `message` field
+    /// arrives here as the raw message bytes.
+    private func startMessageReceiveTask(on channel: MessageChannel) {
+        messageReceiveTask?.cancel()
+        messageReceiveTask = Task { [weak self] in
+            for await data in channel.receivedMessageStream {
+                guard !Task.isCancelled else { return }
+                self?.handleServerMessage(data)
+            }
+        }
+    }
+
+    private func handleServerMessage(_ data: Data) {
+        guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            Self.logger.warning("Server message is not JSON: \(String(data: data, encoding: .utf8) ?? "<binary>")")
+            return
+        }
+        // The relay may deliver either our payload directly or a wrapper with the
+        // payload under "message"; accept both.
+        let body = (json["message"] as? [String: Any]) ?? json
+        guard let type = (body["type"] as? String) ?? (json["type"] as? String) else { return }
+        switch type {
+        case "recording_result_request":
+            let episode = (body["episode"] as? Int) ?? -1
+            Task { @MainActor in
+                self.recordResultEpisode = episode
+            }
+        default:
+            Self.logger.info("Unhandled server message type: \(type)")
+        }
+    }
+
+    /// Send a teleop command (fire-and-forget) — usable from any view, unlike the
+    /// deferred-send path in TeleopControlView's ViewModel, which is only mounted
+    /// while connected.
+    @discardableResult
+    func sendTeleopCommand(_ command: String) -> Bool {
+        guard let channel = teleopChannel else {
+            Self.logger.error("sendTeleopCommand(\(command)): no message channel")
+            return false
+        }
+        let teleopCommand = ClientToServerCommand(type: "teleop_command", message: ["command": command])
+        guard let jsonCommand = try? JSONEncoder().encode(teleopCommand) else {
+            Self.logger.error("JSON encoding failed.")
+            return false
+        }
+        let success = channel.sendServerMessage(jsonCommand)
+        if success {
+            Self.logger.info("Teleop command sent: \(command)")
+        } else {
+            Self.logger.error("MessageChannel.sendServerMessage failed for: \(command)")
+        }
+        return success
     }
 
     // MARK: - Scene phase
