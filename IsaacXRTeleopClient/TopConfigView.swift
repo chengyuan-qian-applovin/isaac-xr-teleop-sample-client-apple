@@ -65,6 +65,12 @@ struct TopConfigView: View {
                     .frame(alignment: .top)
             }
             .frame(height: 150, alignment: .top)
+
+            VStack {
+                MicControlView(viewModel: MicControlView.ViewModel(appModel: viewModel.appModel))
+                    .frame(alignment: .top)
+            }
+            .frame(height: 110, alignment: .top)
         }
         .frame(alignment: .top)
     }

@@ -22,7 +22,7 @@ struct IsaacXRTeleopClientApp: App {
     private let appModel = AppModel()
 
     // Window size
-    static let launchSize = CGSize(width: 500, height: 550)
+    static let launchSize = CGSize(width: 500, height: 670)
 
     var body: some Scene {
 

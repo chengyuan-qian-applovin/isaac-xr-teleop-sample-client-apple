@@ -119,11 +119,13 @@ extension StreamingControlsView {
             Task { @MainActor in
                 if newValue == .connected {
                     appModel.beginChannelDiscovery()
+                    appModel.updateMicStreaming()
                     if !appModel.immersiveSpaceIsOpen {
                         await appModel.openImmersiveSpace(id: streamingSpaceTitle)
                     }
                 } else {
                     appModel.resetChannelState()
+                    appModel.updateMicStreaming()
                     if appModel.immersiveSpaceIsOpen {
                         await appModel.dismissImmersiveSpace()
                     }

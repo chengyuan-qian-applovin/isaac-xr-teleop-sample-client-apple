@@ -38,6 +38,26 @@ class AppModel {
     /// The teleop message channel, set once the server announces it after connect.
     var teleopChannel: MessageChannel?
 
+    /// Streams the headset mic to the teleop server for voice commands
+    /// (transcribed server-side); runs while connected and `micEnabled`.
+    let micStreamer = MicStreamer()
+
+    var micEnabled = savedSettings.micStreamingEnabled {
+        didSet {
+            Self.savedSettings.micStreamingEnabled = micEnabled
+            updateMicStreaming()
+        }
+    }
+
+    /// Start/stop mic streaming to match the toggle and the session state.
+    func updateMicStreaming() {
+        if micEnabled && cxrSession.state == .connected && !ipAddress.isEmpty {
+            micStreamer.start(host: ipAddress)
+        } else {
+            micStreamer.stop()
+        }
+    }
+
     /// In-flight channel discovery task so we don't spawn duplicates.
     @ObservationIgnored private var channelDiscoveryTask: Task<Void, Never>?
 
