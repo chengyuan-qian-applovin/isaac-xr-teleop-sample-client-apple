@@ -18,7 +18,8 @@ import os.log
 /// transcription runs server-side with Whisper).
 ///
 /// Wire protocol: binary WebSocket frames of raw 16 kHz mono PCM16 (little
-/// endian), sent to `wss://<server>:8444/audio` — the same protocol the Quest
+/// endian), sent to `wss://<server>:<port>/audio` (default 8444, configurable
+/// in the Voice Microphone panel) — the same protocol the Quest
 /// browser mic page speaks, so the server (IsaacLab
 /// `sharpa_duo/headset_mic.py`, `--mic_device avp`) is shared between the two
 /// headsets and re-chunks whatever frame sizes arrive.

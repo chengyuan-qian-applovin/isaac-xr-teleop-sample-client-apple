@@ -49,10 +49,18 @@ class AppModel {
         }
     }
 
+    /// Port of the teleop server's headset-mic endpoint (`--mic_device avp:<port>`).
+    var micPort = savedSettings.micPort {
+        didSet {
+            Self.savedSettings.micPort = micPort
+            updateMicStreaming()
+        }
+    }
+
     /// Start/stop mic streaming to match the toggle and the session state.
     func updateMicStreaming() {
         if micEnabled && cxrSession.state == .connected && !ipAddress.isEmpty {
-            micStreamer.start(host: ipAddress)
+            micStreamer.start(host: ipAddress, port: micPort)
         } else {
             micStreamer.stop()
         }

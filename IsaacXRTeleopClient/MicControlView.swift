@@ -25,6 +25,18 @@ struct MicControlView: View {
                 Toggle("Stream microphone", isOn: $viewModel.micEnabled)
                     .font(.title3)
                 HStack {
+                    Text("Server port")
+                        .font(.title3)
+                    Spacer()
+                    TextField(String(MicStreamer.defaultPort), text: $viewModel.micPortText)
+                        .autocorrectionDisabled(true)
+                        .textFieldStyle(.roundedBorder)
+                        .textInputAutocapitalization(.never)
+                        .keyboardType(.numberPad)
+                        .multilineTextAlignment(.trailing)
+                        .frame(width: 120)
+                }
+                HStack {
                     Text(viewModel.statusText)
                         .font(.callout)
                         .foregroundStyle(.secondary)
@@ -44,8 +56,19 @@ extension MicControlView {
     class ViewModel {
         private let appModel: AppModel
 
+        /// Text mirror of the port so partial input while typing is kept;
+        /// only a valid port number is committed to the model.
+        var micPortText: String {
+            didSet {
+                if let port = Int(micPortText), (1...65535).contains(port) {
+                    appModel.micPort = port
+                }
+            }
+        }
+
         init(appModel: AppModel) {
             self.appModel = appModel
+            self.micPortText = String(appModel.micPort)
         }
 
         var micEnabled: Bool {

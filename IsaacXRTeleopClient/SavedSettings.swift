@@ -14,10 +14,14 @@ import CloudXRKit
 struct SavedSettings {
     static private let ipAddressKey = "ipAddress"
     static private let micStreamingEnabledKey = "micStreamingEnabled"
+    static private let micPortKey = "micPort"
 
     // The IP address of the remote host that is running a CloudXR server.
     @AppStorage(ipAddressKey) var ipAddress: String = ""
 
     // Whether the mic is streamed to the teleop server for voice commands.
     @AppStorage(micStreamingEnabledKey) var micStreamingEnabled: Bool = true
+
+    // Port of the teleop server's headset-mic endpoint.
+    @AppStorage(micPortKey) var micPort: Int = MicStreamer.defaultPort
 }
